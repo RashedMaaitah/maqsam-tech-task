@@ -20,12 +20,11 @@ public class Main {
         double longitude = Double.parseDouble(args[1]);
 
         // Choose implementation:
-        // Option 1: Astronomical calculations (offline, most accurate)
+        // Option 1: Astronomical calculations (offline-ish, most accurate)
         // TimeOfDayResolver resolver = new AstronomicalTimeOfDayResolver();
 
-        // NOTE: This implementation uses Jackson which is a third-party(external) library
         // Option 2: API-based (requires internet, simpler)
-         TimeOfDayResolver resolver = new ApiTimeOfDayResolver();
+        TimeOfDayResolver resolver = new ApiTimeOfDayResolver();
 
         return resolver.resolvePeriod(latitude, longitude);
     }

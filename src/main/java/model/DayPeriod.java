@@ -4,8 +4,8 @@ public enum DayPeriod {
     NIGHT("night.png"),
     DAWN("sunrise.png"),
     MORNING("morning.png"),
-    NOON("day.png"),
-    EVENING("afternoon.png"),
+    NOON("noon.png"),
+    EVENING("evening.png"),
     SUNSET("sunset.png");
 
     private final String fileName;

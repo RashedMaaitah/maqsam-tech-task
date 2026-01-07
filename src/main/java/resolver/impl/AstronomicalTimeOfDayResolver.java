@@ -4,13 +4,23 @@ import model.DayPeriod;
 import model.SunTimes;
 import resolver.TimeOfDayResolver;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AstronomicalTimeOfDayResolver implements TimeOfDayResolver {
 
+    private static final String SUNRISE_SUNSET_URL = "https://api.sunrisesunset.io/json?lat=%s&lng=%s";
+
     @Override
     public DayPeriod resolvePeriod(double latitude, double longitude) {
-        ZonedDateTime now = ZonedDateTime.now();
+        ZoneId targetZone = fetchTimeZone(latitude, longitude);
+        ZonedDateTime now = ZonedDateTime.now(targetZone);
         SunTimes times = calculateSunTimes(latitude, longitude, now);
 
         LocalTime time = now.toLocalTime();
@@ -21,6 +31,38 @@ public class AstronomicalTimeOfDayResolver implements TimeOfDayResolver {
         if (time.isBefore(times.sunset().minusHours(2))) return DayPeriod.NOON;
         if (time.isBefore(times.sunset())) return DayPeriod.EVENING;
         return DayPeriod.SUNSET;
+    }
+
+    private ZoneId fetchTimeZone(double latitude, double longitude) {
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            String url = String.format(SUNRISE_SUNSET_URL, latitude, longitude);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                String json = response.body();
+                String timezoneStr = extractJsonValue(json, "timezone");
+                if (!timezoneStr.isEmpty()) {
+                    return ZoneId.of(timezoneStr);
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            System.err.println("Connection error while fetching timezone: " + e.getMessage());
+        }
+        return ZoneId.systemDefault();
+    }
+
+    private String extractJsonValue(String json, String key) {
+        Pattern pattern = Pattern.compile("\"" + key + "\":\"([^\"]+)\"");
+        Matcher matcher = pattern.matcher(json);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return "";
     }
 
     private static SunTimes calculateSunTimes(double lat, double lon, ZonedDateTime now) {
